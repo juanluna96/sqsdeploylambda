@@ -1,13 +1,9 @@
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
-const sqsClient = new SQSClient({ region: "us-east-1" });
-
-const generateSQSQueueUrlFromArn = (arn, queqe) => {
-  if (!arn) return "";
-  const [_, __, ___, region, accountId, queueName] = arn
-    .replace("myQueue", queqe)
-    .split(":");
-  return `https://sqs.${region}.amazonaws.com/${accountId}/${queueName}`;
-};
+import SQS from "aws-sdk/clients/sqs";
+import {
+  generateSQSQueueUrlFromArn,
+  getOfflineSqsQueueUrl,
+  isLocalHost,
+} from "./utils/utils";
 
 export const handler = async (event) => {
   let response;
@@ -19,7 +15,10 @@ export const handler = async (event) => {
     body.queueName
   );
 
-  console.log(sqsQueueUrl);
+  const sqs = new SQS();
+  const url = isLocalHost(event)
+    ? getOfflineSqsQueueUrl(sqsQueueUrl)
+    : sqsQueueUrl;
 
   if (!sqsQueueUrl) {
     return {
@@ -37,11 +36,12 @@ export const handler = async (event) => {
       },
     },
     MessageBody: "Welcome to CloudKatha",
-    QueueUrl: sqsQueueUrl,
+    QueueUrl: url,
   };
 
   try {
-    const data = await sqsClient.send(new SendMessageCommand(params));
+    const data = await sqs.sendMessage(params).promise();
+
     if (data) {
       console.log("Success, message sent. MessageID:", data.MessageId);
       const bodyMessage =

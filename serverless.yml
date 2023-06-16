@@ -5,11 +5,16 @@ frameworkVersion: "3"
 provider:
   name: aws
   runtime: nodejs18.x
+  region: us-east-1
   environment:
+    SQS_OFFLINE_ENDPOINT: ${self:custom.serverless-offline-sqs.endpoint}
     QUEUE_ARN: ${self:custom.myQueueARN}
 
 plugins:
+  - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-offline-sqs
+  - serverless-offline
 
 functions:
   triggerhandler:
@@ -49,6 +54,20 @@ functions:
               - Arn
 
 custom:
+  webpack:
+      webpackConfig: 'webpack.config.js'
+      includeModules: false
+      packager: 'npm'
+  serverless-offline:
+      httpPort: 8080
+  serverless-offline-sqs:
+    autoCreate: true
+    apiVersion: '2012-11-05'
+    endpoint: http://0.0.0.0:9324
+    region: ${self:provider.region}
+    accessKeyId: root
+    secretAccessKey: root
+    skipCacheInvalidation: false
   myQueueARN: arn:aws:sqs:${aws:region}:${aws:accountId}:${self:service}-${sls:stage}-myQueue
 
 resources:
