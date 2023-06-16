@@ -1,0 +1,67 @@
+service: sqsdeploylambda
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  environment:
+    QUEUE_ARN: ${self:custom.myQueueARN}
+
+plugins:
+  - serverless-iam-roles-per-function
+
+functions:
+  triggerhandler:
+    handler: src/triggerhandler.handler
+    iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - sqs:*
+      Resource: "*"
+    events:
+      - httpApi:
+          path: /
+          method: post
+  firsthandler:
+    handler: src/sqs/firsthandler.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - FirstQueue
+              - Arn
+  secondhandler:
+    handler: src/sqs/secondhandler.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - SecondQueue
+              - Arn
+  thirdhandler:
+    handler: src/sqs/thirdhandler.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - ThirdQueue
+              - Arn
+
+custom:
+  myQueueARN: arn:aws:sqs:${aws:region}:${aws:accountId}:${self:service}-${sls:stage}-myQueue
+
+resources:
+  Resources:
+    FirstQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-FirstQueue
+    SecondQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-SecondQueue
+    ThirdQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-ThirdQueue
